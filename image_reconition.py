@@ -12,141 +12,109 @@ class DDTankBot:
     def __init__(self):
         self.padd_x=10
         self.padd_y=10
-        self.max_attempts = 20
+        self.max_attempts = 10
+        self.condifence = 0.8
+        self.standard_lower_confidence = 0.5
+        self.sleep_delay = lambda x: time.sleep(x)
+        self.standard_sleep_delay = 0.5
         self.initialize_images()
 
     
     def initialize_images(self):
-        self.BAG = SRC_PATH+BAG_IMAGE_WITH_BG
-        self.MANUAL_COMPLETO = SRC_PATH+MANUAL_COMPLETO_IMAGE_WITH_BG
-        self.OPEN_LOTE = SRC_PATH+OPEN_LOTE_IMAGE_WITH_BG
-        self.OPEN_MAX_LOTE = SRC_PATH+OPEN_MAX_LOTE_IMAGE_WITH_BG
-        self.OPEN_YES_BUTTON = SRC_PATH+OPEN_YES_BUTTON_IMAGE_WITH_BG
-        self.OPEN_SINGLE_ITEM = SRC_PATH+OPEN_SINGLE_ITEM_IMAGE_WITH_BG
+        self.BAG = BAG_IMAGE
+        self.OPEN_LOTE = OPEN_LOTE_IMAGE
+        self.OPEN_MAX_LOTE = OPEN_MAX_LOTE_IMAGE
+        self.OPEN_YES_BUTTON = OPEN_ITEM_YES_BUTTON_IMAGE
+        self.OPEN_SINGLE_ITEM = OPEN_SINGLE_ITEM_IMAGE
 
     ## THIS WILL DO FOR NOW, WILL HAVE TO TRAIN MY OWN OPENCV MODEL AFTER FOR ACTUALLY FINDING HARDER IMAGES TO RECOGNIZE
-    def open_bag(self):
-        max_attempts = self.max_attempts
+
+    ## THESE MAKE THE CODE MORE READABLE
+    def check_if_img_on_screen_and_click(self, image, confidence='standard', last_step_check=False, padding=(0,0), half_padding=False, max_attempts=1):
+        if confidence == 'standard':
+            confidence = self.condifence
+        if half_padding:
+            img_width, img_height = Image.open(image).size
+            padd_x = img_width*(1/2)
+            padd_y = img_height*(1/2)
+            padding = (padd_x, padd_y)
         attempts = 0
         while attempts < max_attempts:
-            try:
-                location = pyautogui.locateOnScreen(self.BAG , confidence=0.6, grayscale=False) ##WORKS FOR A SMALL RANGE OF IMAGE SIZES
-                if location:
-                    print("found Image!")
-                    x, y = location[0], location[1]
-                    pydirectinput.moveTo(x, y)
-                    pydirectinput.click()
-                else:
-                    print(f"Not found self.BAG Image! ATTEMPT: {attempts+1} OF {max_attempts}")
-                    attempts += 1
-            except Exception as e:
-                print("EXCEPTION: ", e)
-                attempts += 1
+            if last_step_check:
+                try:
+                    location = pyautogui.locateOnScreen(image , confidence=confidence, grayscale=False) ##WORKS FOR A SMALL RANGE OF IMAGE SIZES
+                    if location:
+                        print(f"found {image} Image!")
+                        x, y = location[0], location[1]
+                        pydirectinput.moveTo(x + int(round(padding[0], 0)), y + int(round(padding[1], 0)))
+                        pydirectinput.click()
+                        return True
+                    else:
+                        print(f"Not found {image} Image!")
+                        return False
+                except Exception as e:
+                    print("EXCEPTION: ", e)
+
+    
+    def check_if_img_on_screen(self, image, last_step_check=False, max_attempts=1):
+        attempts = 0
+        while attempts < max_attempts:
+            if last_step_check:
+                try:
+                    location = pyautogui.locateOnScreen(image , confidence=self.condifence, grayscale=False) ##WORKS FOR A SMALL RANGE OF IMAGE SIZES
+                    if location:
+                        print(f"found {image} Image!")
+                        return True
+                    else:
+                        print(f"Not found {image} Image!")
+                        return False
+                except Exception as e:
+                    print("EXCEPTION: ", e)
+
+
+    def open_bag(self):
+        return self.check_if_img_on_screen_and_click(self.BAG, last_step_check=True, half_padding=True, max_attempts=self.max_attempts)
 
 
     def open_yes_button(self):
-        max_attempts = self.max_attempts
-        attempts = 0
-        while attempts < max_attempts:
-            try:
-                location = pyautogui.locateOnScreen(self.OPEN_YES_BUTTON , confidence=0.6, grayscale=False) ##WORKS FOR A SMALL RANGE OF IMAGE SIZES
-                if location:
-                    print("found self.OPEN_YES_BUTTON Image!")
-                    x, y = location[0]+self.padd_x, location[1]+self.padd_y
-                    pydirectinput.moveTo(x, y)
-                    pydirectinput.click()
-                    break
-                else:
-                    print(f"Not found self.OPEN_YES_BUTTON Image! ATTEMPT: {attempts+1} OF {max_attempts}")
-                    attempts += 1
-            except Exception as e:
-                print("EXCEPTION: ", e)
-                attempts += 1
-
+        return self.check_if_img_on_screen_and_click(self.OPEN_YES_BUTTON, last_step_check=True, half_padding=True, max_attempts=self.max_attempts)
 
     def open_max_lote(self):
-        max_attempts = self.max_attempts
-        attempts = 0
-        while attempts < max_attempts:
-            try:
-                location = pyautogui.locateOnScreen(self.OPEN_MAX_LOTE , confidence=0.6, grayscale=False) ##WORKS FOR A SMALL RANGE OF IMAGE SIZES
-                if location:
-                    print("found self.OPEN_MAX_LOTE Image!")
-                    x, y = location[0]+self.padd_x, location[1]+self.padd_y
-                    pydirectinput.moveTo(x, y)
-                    pydirectinput.click()
-                    self.open_yes_button()
-                    break
-                else:
-                    print(f"Not found self.OPEN_MAX_LOTE Image! ATTEMPT: {attempts+1} OF {max_attempts}")
-                    attempts += 1
-            except Exception as e:
-                print("EXCEPTION: ", e)
-                attempts += 1
+        return self.check_if_img_on_screen_and_click(self.OPEN_MAX_LOTE, confidence=self.standard_lower_confidence, last_step_check=True, half_padding=True, max_attempts=self.max_attempts)
 
     
     def open_single_item(self):
-        max_attempts = self.max_attempts
-        attempts = 0
-        while attempts < max_attempts:
-            try:
-                location = pyautogui.locateOnScreen(self.OPEN_SINGLE_ITEM , confidence=0.6, grayscale=False) ##WORKS FOR A SMALL RANGE OF IMAGE SIZES
-                if location:
-                    print("found self.OPEN_SINGLE_ITEM Image!")
-                    x, y = location[0]+self.padd_x, location[1]+self.padd_y
-                    pydirectinput.moveTo(x, y)
-                    pydirectinput.click()
-                    break
-                else:
-                    print(f"Not found self.OPEN_SINGLE_ITEM Image!: ATTEMPT: {attempts+1} OF {max_attempts}")
-                    attempts += 1
-            except Exception as e:
-                print("EXCEPTION: ", e)
-                attempts += 1
+        return self.check_if_img_on_screen_and_click(self.OPEN_SINGLE_ITEM, confidence=self.standard_lower_confidence, last_step_check=True, half_padding=True, max_attempts=self.max_attempts)
 
 
     def open_lote(self):
-        max_attempts = self.max_attempts
+        return self.check_if_img_on_screen_and_click(self.OPEN_LOTE, last_step_check=True, half_padding=True, max_attempts=self.max_attempts)
+         
+
+    def check_if_item(self, item):
+        return self.check_if_img_on_screen_and_click(item, last_step_check=True, half_padding=True, max_attempts=self.max_attempts)
+
+
+    def open_item(self, item):
         attempts = 0
-        while attempts < max_attempts:
-            try:
-                location = pyautogui.locateOnScreen(self.OPEN_LOTE , confidence=0.6, grayscale=False) ##WORKS FOR A SMALL RANGE OF IMAGE SIZES
-                if location:
-                    print("found self.OPEN_LOTE Image!")
-                    x, y = location[0]+self.padd_x, location[1]+self.padd_y
-                    pydirectinput.moveTo(x, y)
-                    pydirectinput.click()
-                    self.open_max_lote()
-                    return True
+        max_attempts = 1
+        item_on_screen = True
+        while item_on_screen:
+            while attempts < max_attempts:
+                item_on_screen = self.check_if_item(item)
+                self.sleep_delay(self.standard_sleep_delay*5)
+                attempts += 1
+                if item_on_screen:
                     break
+            if item_on_screen:
+                self.sleep_delay(self.standard_sleep_delay)
+                if_open_lote = self.open_lote()
+                if if_open_lote:
+                    self.open_max_lote()
+                    self.open_yes_button()
                 else:
-                    print(f"Not found self.OPEN_LOTE Image! ATTEMPT: {attempts+1} OF {max_attempts}")
-                    attempts += 1
-            except Exception as e:
-                print("EXCEPTION: ", e)
-                attempts += 1
+                    self.open_single_item()
 
-
-    def open_manual(self):
-        max_attempts = self.max_attempts
-        attempts = 0
-        while attempts < max_attempts:
-            try:
-                location = pyautogui.locateOnScreen(self.MANUAL_COMPLETO , confidence=0.6, grayscale=False) ##WORKS FOR A SMALL RANGE OF IMAGE SIZES
-                if location:
-                    print("found self.MANUAL_COMPLETO Image!")
-                    x, y = location[0]+self.padd_x, location[1]+self.padd_y
-                    pydirectinput.moveTo(x, y)
-                    pydirectinput.click()
-                    check_lote = self.open_lote()
-                    if not check_lote:
-                        self.open_single_item()
-                else:
-                    print(f"Not found self.MANUAL_COMPLETO Image! ATTEMPT: {attempts+1} OF {max_attempts}")
-                    attempts += 1
-            except Exception as e:
-                print("EXCEPTION: ", e)
-                attempts += 1
 
     ## LETS DEVELOP A LOGIC FOR KILLING THE ANT QUEEN (INDEPENDENT OF WHERE YOU SPAWN, BUT FIRST, WE NEEK TO FIND A WAY TO RECOGNIZE THE SPAWN POINT, AND THEN THE ANT QUEEN POSITION)
     ## ON TOP OF THAT, WE NEED OUR DISTANCE TO HER, OUR ANGLE, THE WIND, AND ALSO THE DIFF IN HEIGHT BETWEEN US AND HER
@@ -157,22 +125,20 @@ class DDTankAntQueen(DDTankBot):
     def __init__(self):
         super().__init__()
         self.initialize_antqueen_images()
-        self.sleep_delay = lambda x: time.sleep(x)
-        self.standard_sleep_delay = 1
 
 
     def initialize_antqueen_images(self):
-        self.OPEN_EXPEDITION=SRC_PATH+OPEN_EXPEDITION
-        self.EXPEDITION_SELECTION=SRC_PATH+ANTQUEEN_EXPEDITION_SELECTION
-        self.EXPEDITION_DIFFICULTY=SRC_PATH+EASY_EXPEDITION_DIFFICULTY
-        self.EXPEDITION_YES_SELECTION=SRC_PATH+EXPEDITION_YES_SELECTION
-        self.TWO_FREE_BOSS_BATTLE=SRC_PATH+TWO_FREE_BOSS_BATTLE
-        self.ONE_FREE_BOSS_BATTLE=SRC_PATH+ONE_FREE_BOSS_BATTLE
-        self.START_AT_BOSS_BATTLE=SRC_PATH+START_AT_BOSS_BATTLE
-        self.BUY_EXPEDITION_MEDALS_POP_UP=SRC_PATH+BUY_EXPEDITION_MEDALS_POP_UP
-        self.NOT_ENOUGH_MEDALS_POP_UP=SRC_PATH+NOT_ENOUGH_MEDALS_POP_UP
-        self.FAST_MEDAL_BUY_POP_UP=SRC_PATH+FAST_MEDAL_BUY_POP_UP
-        self.SPEND_MEDAL_TO_OPEN_EXPEDITION=SRC_PATH+SPEND_MEDAL_TO_OPEN_EXPEDITION
+        self.OPEN_EXPEDITION=OPEN_EXPEDITION
+        self.EXPEDITION_SELECTION=ANTQUEEN_EXPEDITION_SELECTION
+        self.EXPEDITION_DIFFICULTY=EASY_EXPEDITION_DIFFICULTY
+        self.EXPEDITION_YES_SELECTION=EXPEDITION_YES_SELECTION
+        self.TWO_FREE_BOSS_BATTLE=TWO_FREE_BOSS_BATTLE
+        self.ONE_FREE_BOSS_BATTLE=ONE_FREE_BOSS_BATTLE
+        self.START_AT_BOSS_BATTLE=START_AT_BOSS_BATTLE
+        self.BUY_EXPEDITION_MEDALS_POP_UP=BUY_EXPEDITION_MEDALS_POP_UP
+        self.NOT_ENOUGH_MEDALS_POP_UP=NOT_ENOUGH_MEDALS_POP_UP
+        self.FAST_MEDAL_BUY_POP_UP=FAST_MEDAL_BUY_POP_UP
+        self.SPEND_MEDAL_TO_OPEN_EXPEDITION=SPEND_MEDAL_TO_OPEN_EXPEDITION
 
     
 
@@ -209,44 +175,6 @@ class DDTankAntQueen(DDTankBot):
             print("INSTANCE NOT OPENED!")
 
 
-    ## THESE MAKE THE CODE MORE READABLE
-    def check_if_img_on_screen_and_click(self, image, last_step_check=False, padding=(0,0), half_padding=False):
-        if half_padding:
-            img_width, img_height = Image.open(image).size
-            padd_x = img_width*(1/2)
-            padd_y = img_height*(1/2)
-            padding = (padd_x, padd_y)
-
-        if last_step_check:
-            try:
-                location = pyautogui.locateOnScreen(image , confidence=0.6, grayscale=False) ##WORKS FOR A SMALL RANGE OF IMAGE SIZES
-                if location:
-                    print(f"found {image} Image!")
-                    x, y = location[0], location[1]
-                    pydirectinput.moveTo(x + int(round(padding[0], 0)), y + int(round(padding[1], 0)))
-                    pydirectinput.click()
-                    return True
-                else:
-                    print(f"Not found {image} Image!")
-                    return False
-            except Exception as e:
-                print("EXCEPTION: ", e)
-
-    
-    def check_if_img_on_screen(self, image, last_step_check=False):
-        if last_step_check:
-            try:
-                location = pyautogui.locateOnScreen(image , confidence=0.6, grayscale=False) ##WORKS FOR A SMALL RANGE OF IMAGE SIZES
-                if location:
-                    print(f"found {image} Image!")
-                    return True
-                else:
-                    print(f"Not found {image} Image!")
-                    return False
-            except Exception as e:
-                print("EXCEPTION: ", e)
-
-
     def buy_medals(self, two_free_boss_battle_check, one_free_boss_battle_check, select_yes_check):
         if two_free_boss_battle_check or one_free_boss_battle_check:
             if select_yes_check:
@@ -263,7 +191,7 @@ class DDTankAntQueen(DDTankBot):
             self.check_if_img_on_screen_and_click(self.NOT_ENOUGH_MEDALS_POP_UP, last_step_check=True, padding=(padd_x, padd_y))
 
             img_width, img_height = Image.open(self.FAST_MEDAL_BUY_POP_UP).size
-            padd_x = img_width*0.6
+            padd_x = img_width*self.condifence
             padd_y = img_height*0.375
             self.check_if_img_on_screen_and_click(self.FAST_MEDAL_BUY_POP_UP, last_step_check=True, padding=(padd_x, padd_y))
             ## DOUBLE PRESS 9 FOR MAX NUMBER OF MEDALS
@@ -304,11 +232,11 @@ class DDTankAntQueen(DDTankBot):
 ## THE IDEAL WORLD WOULD BE WHERE WE CAN CONTROL A VIRTUAL MOUSE INSTEAD OF OUR WINDOWS MOUSE, NOT SURE IT THIS WILL BE POSSIBLE.
 
 def main():
-    # bot_test = DDTankBot()
+    bot_test = DDTankBot()
     # bot_test.open_bag()
-    # bot_test.open_manual()
-    antqueen_farm_bot = DDTankAntQueen()
-    antqueen_farm_bot.mainloop()
+    bot_test.open_item(MANUAL_COMPLETO_IMAGE)
+    # antqueen_farm_bot = DDTankAntQueen()
+    # antqueen_farm_bot.mainloop()
 
 
 if __name__ == '__main__':
