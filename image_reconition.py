@@ -1,6 +1,7 @@
 # THIS IS AN IMAGE RECONITION TEST
 from src_imgs_path import *
-import pyautogui
+import os
+import pyautogui ## THIS WILL DO FOR NOW, WILL HAVE TO TRAIN MY OWN OPENCV MODEL AFTER FOR ACTUALLY FINDING HARDER IMAGES TO RECOGNIZE
 import time
 import pydirectinput ## MOVE VIRTUAL CURSOR, SO IT DOES NOT MESS WITH REGULAR WINDOWS CURSOR
 import time
@@ -15,8 +16,10 @@ class DDTankBot:
         self.max_attempts = 10
         self.condifence = 0.8
         self.standard_lower_confidence = 0.5
+        self.resized_confidence = 0.6
         self.sleep_delay = lambda x: time.sleep(x)
         self.standard_sleep_delay = 0.5
+        self.standard_window_dimensions=(942, 646)
         self.initialize_images()
 
     
@@ -27,51 +30,85 @@ class DDTankBot:
         self.OPEN_YES_BUTTON = OPEN_ITEM_YES_BUTTON_IMAGE
         self.OPEN_SINGLE_ITEM = OPEN_SINGLE_ITEM_IMAGE
 
-    ## THIS WILL DO FOR NOW, WILL HAVE TO TRAIN MY OWN OPENCV MODEL AFTER FOR ACTUALLY FINDING HARDER IMAGES TO RECOGNIZE
+    ## FIND WINDOW POSITION AND DIMENTIONS
+    def find_window_region(self):
+        window_handle = pyautogui.getWindowsWithTitle('SurfTank')[0]
+        window_rect = window_handle.topleft
+        window_width = window_handle.width
+        window_height = window_handle.height
+
+        return (window_rect[0], window_rect[1], window_width, window_height)
+    
+
+    ## CALCULATE THE SIZE DOWN RATIO SO WE CAN FIND THE IMAGES ON SCREEN PROPERLY BASED ON OUR PRINTS
+    def find_window_scale_ratio(self, window_width, window_height):
+        x_ratio = window_width/self.standard_window_dimensions[0]
+        y_ratio = window_height/self.standard_window_dimensions[1]
+
+        print("WINDOW SIZE : ", window_width, window_height)
+
+        return (x_ratio, y_ratio)
+    
+
+    ## IF IMAGE RATIO IS DIFFERENT FROM 1, WE NEED TO RESIZE THE IMAGE TO MATCH THE WINDOW SIZE
+    def resize_image(self, image, x_ratio, y_ratio):
+        if_resized = False
+        if x_ratio != 1 or y_ratio != 1:
+            image_width, image_height = Image.open(image).size
+            image_width = int(round(image_width*x_ratio, 0))
+            image_height = int(round(image_height*y_ratio, 0))
+            image_obj = Image.open(image).resize((image_width, image_height))
+            new_path = RISEZED_TEMP_PATH+image.split('/')[-1]
+            print("X_RATIO : ", x_ratio, "Y_RATIO : ", y_ratio)
+            print('NEW IMAGE DIMENTIONS : ', image_width, image_height)
+            print('SAVING RESIZED IMAGE TO : ', new_path)
+            image_obj.save(new_path)
+            
+            image = new_path
+            if_resized = True
+            confidence=self.resized_confidence
+        
+        return image, if_resized, confidence
+        
+
+    ## DELETE TEMPORARY RESIZED IMAGES
+    def delete_resized_temp_images(self, file_path):
+        try:
+            if os.path.isfile(file_path):
+                os.unlink(file_path)
+        except Exception as e:
+            print(e)
+    
 
     ## THESE MAKE THE CODE MORE READABLE
-    def check_if_img_on_screen_and_click(self, image, confidence='standard', last_step_check=False, padding=(0,0), half_padding=False, max_attempts=1):
+    def check_if_img_on_screen(self, image, confidence='standard', last_step_check=False, padding=(0,0), half_padding=False, max_attempts=1, click=True):
         attempts = 0
         if confidence == 'standard':
             confidence = self.condifence
+        
+        ## IF HALF PADDING IS TRUE, WE WILL USE HALF OF THE IMAGE SIZE AS PADDING TO CLICK ON ITS CENTER
         if half_padding:
             img_width, img_height = Image.open(image).size
             padd_x = img_width*(1/2)
             padd_y = img_height*(1/2)
             padding = (padd_x, padd_y)
+
         while attempts < max_attempts:
             if last_step_check:
                 try:
-                    location = pyautogui.locateOnScreen(image , confidence=confidence, grayscale=False) ##WORKS FOR A SMALL RANGE OF IMAGE SIZES
+                    window_x, window_y, window_width, window_height = self.find_window_region()
+                    x_ratio, y_ratio = self.find_window_scale_ratio(window_width, window_height)
+                    image, if_resized, confidence = self.resize_image(image, x_ratio, y_ratio)
+                    # self.sleep_delay(self.standard_sleep_delay)
+                    location = pyautogui.locateOnScreen(image , confidence=confidence, grayscale=False, region=(window_x, window_y, window_width, window_height)) ##WORKS FOR A SMALL RANGE OF IMAGE SIZES
+                    if if_resized:
+                        self.delete_resized_temp_images(image)
                     if location:
                         print(f"found {image} Image!")
                         x, y = location[0], location[1]
                         pydirectinput.moveTo(x + int(round(padding[0], 0)), y + int(round(padding[1], 0)))
-                        pydirectinput.click()
-                        return True
-                    else:
-                        print(f"Not found {image} Image!")
-                        attempts += 1
-                except Exception as e:
-                    print("EXCEPTION: ", e)
-                    attempts += 1
-            else:
-                return False
-
-        return False
-
-    
-    def check_if_img_on_screen(self, image, confidence='standard', last_step_check=False, max_attempts=1):
-        attempts = 0
-        if confidence == 'standard':
-            confidence = self.condifence
-        
-        while attempts < max_attempts:
-            if last_step_check:
-                try:
-                    location = pyautogui.locateOnScreen(image , confidence=self.condifence, grayscale=False) ##WORKS FOR A SMALL RANGE OF IMAGE SIZES
-                    if location:
-                        print(f"found {image} Image!")
+                        if click:
+                            pydirectinput.click()
                         return True
                     else:
                         print(f"Not found {image} Image!")
@@ -86,26 +123,26 @@ class DDTankBot:
 
 
     def open_bag(self):
-        return self.check_if_img_on_screen_and_click(self.BAG, last_step_check=True, half_padding=True, max_attempts=self.max_attempts)
+        return self.check_if_img_on_screen(self.BAG, last_step_check=True, half_padding=True, max_attempts=self.max_attempts)
 
 
     def open_yes_button(self):
-        return self.check_if_img_on_screen_and_click(self.OPEN_YES_BUTTON, last_step_check=True, half_padding=True, max_attempts=self.max_attempts)
+        return self.check_if_img_on_screen(self.OPEN_YES_BUTTON, last_step_check=True, half_padding=True, max_attempts=self.max_attempts)
 
     def open_max_lote(self):
-        return self.check_if_img_on_screen_and_click(self.OPEN_MAX_LOTE, confidence=self.standard_lower_confidence, last_step_check=True, half_padding=True, max_attempts=self.max_attempts)
+        return self.check_if_img_on_screen(self.OPEN_MAX_LOTE, confidence=self.standard_lower_confidence, last_step_check=True, half_padding=True, max_attempts=self.max_attempts)
 
     
     def open_single_item(self):
-        return self.check_if_img_on_screen_and_click(self.OPEN_SINGLE_ITEM, confidence=self.standard_lower_confidence, last_step_check=True, half_padding=True, max_attempts=self.max_attempts)
+        return self.check_if_img_on_screen(self.OPEN_SINGLE_ITEM, confidence=self.standard_lower_confidence, last_step_check=True, half_padding=True, max_attempts=self.max_attempts)
 
 
     def open_lote(self):
-        return self.check_if_img_on_screen_and_click(self.OPEN_LOTE, last_step_check=True, half_padding=True, max_attempts=self.max_attempts)
+        return self.check_if_img_on_screen(self.OPEN_LOTE, last_step_check=True, half_padding=True, max_attempts=self.max_attempts)
          
 
     def check_if_item(self, item):
-        return self.check_if_img_on_screen_and_click(item, last_step_check=True, half_padding=True, max_attempts=self.max_attempts)
+        return self.check_if_img_on_screen(item, last_step_check=True, half_padding=True, max_attempts=self.max_attempts)
 
 
     def open_item(self, item):
@@ -156,23 +193,23 @@ class DDTankAntQueen(DDTankBot):
 
     def mainloop(self):
         self.sleep_delay(self.standard_sleep_delay)
-        open_expedition_check = self.check_if_img_on_screen_and_click(self.OPEN_EXPEDITION, last_step_check=True, half_padding=True)
+        open_expedition_check = self.check_if_img_on_screen(self.OPEN_EXPEDITION, last_step_check=True, half_padding=True)
         self.sleep_delay(self.standard_sleep_delay)
         
         ## CHECK IF FREE BOSS BATTLES
-        two_free_boss_battle_check = self.check_if_img_on_screen(self.TWO_FREE_BOSS_BATTLE, confidence=self.standard_lower_confidence, last_step_check=open_expedition_check)
-        one_free_boss_battle_check = self.check_if_img_on_screen(self.ONE_FREE_BOSS_BATTLE, confidence=self.standard_lower_confidence, last_step_check=open_expedition_check)
+        two_free_boss_battle_check = self.check_if_img_on_screen(self.TWO_FREE_BOSS_BATTLE, confidence=self.standard_lower_confidence, last_step_check=open_expedition_check, click=False)
+        one_free_boss_battle_check = self.check_if_img_on_screen(self.ONE_FREE_BOSS_BATTLE, confidence=self.standard_lower_confidence, last_step_check=open_expedition_check, click=False)
 
-        select_expedition_check = self.check_if_img_on_screen_and_click(self.EXPEDITION_SELECTION, last_step_check=open_expedition_check, half_padding=True)
+        select_expedition_check = self.check_if_img_on_screen(self.EXPEDITION_SELECTION, last_step_check=open_expedition_check, half_padding=True)
         self.sleep_delay(self.standard_sleep_delay)
 
-        select_difficulty_check = self.check_if_img_on_screen_and_click(self.EXPEDITION_DIFFICULTY, last_step_check=select_expedition_check, half_padding=True)
+        select_difficulty_check = self.check_if_img_on_screen(self.EXPEDITION_DIFFICULTY, last_step_check=select_expedition_check, half_padding=True)
         self.sleep_delay(self.standard_sleep_delay)
 
-        select_start_at_boss_battle_check = self.check_if_img_on_screen_and_click(self.START_AT_BOSS_BATTLE, last_step_check=select_difficulty_check, half_padding=True)
+        select_start_at_boss_battle_check = self.check_if_img_on_screen(self.START_AT_BOSS_BATTLE, last_step_check=select_difficulty_check, half_padding=True)
         self.sleep_delay(self.standard_sleep_delay)
 
-        select_yes_check = self.check_if_img_on_screen_and_click(self.EXPEDITION_YES_SELECTION, last_step_check=select_start_at_boss_battle_check, half_padding=True)
+        select_yes_check = self.check_if_img_on_screen(self.EXPEDITION_YES_SELECTION, last_step_check=select_start_at_boss_battle_check, half_padding=True)
         self.sleep_delay(self.standard_sleep_delay)
 
         buy_medals_check = self.buy_medals(two_free_boss_battle_check, one_free_boss_battle_check, select_yes_check)
@@ -195,24 +232,24 @@ class DDTankAntQueen(DDTankBot):
             img_width, img_height = Image.open(self.BUY_EXPEDITION_MEDALS_POP_UP).size
             padd_x = img_width*(1/5)
             padd_y = img_height*(3.5/4)
-            self.check_if_img_on_screen_and_click(self.BUY_EXPEDITION_MEDALS_POP_UP, last_step_check=True, padding=(padd_x, padd_y))
+            self.check_if_img_on_screen(self.BUY_EXPEDITION_MEDALS_POP_UP, last_step_check=True, padding=(padd_x, padd_y))
 
             img_width, img_height = Image.open(self.NOT_ENOUGH_MEDALS_POP_UP).size
             padd_x = img_width*(1/6)
             padd_y = img_height*(3.5/4)
-            self.check_if_img_on_screen_and_click(self.NOT_ENOUGH_MEDALS_POP_UP, last_step_check=True, padding=(padd_x, padd_y))
+            self.check_if_img_on_screen(self.NOT_ENOUGH_MEDALS_POP_UP, last_step_check=True, padding=(padd_x, padd_y))
 
             img_width, img_height = Image.open(self.FAST_MEDAL_BUY_POP_UP).size
             padd_x = img_width*self.condifence
             padd_y = img_height*0.375
-            self.check_if_img_on_screen_and_click(self.FAST_MEDAL_BUY_POP_UP, last_step_check=True, padding=(padd_x, padd_y))
+            self.check_if_img_on_screen(self.FAST_MEDAL_BUY_POP_UP, last_step_check=True, padding=(padd_x, padd_y))
             ## DOUBLE PRESS 9 FOR MAX NUMBER OF MEDALS
             pyautogui.press('9')
             pyautogui.press('9')
             img_width, img_height = Image.open(self.FAST_MEDAL_BUY_POP_UP).size
             padd_x = img_width*(1/2)
             padd_y = img_height*0.85
-            self.check_if_img_on_screen_and_click(self.FAST_MEDAL_BUY_POP_UP, last_step_check=True, padding=(padd_x, padd_y))
+            self.check_if_img_on_screen(self.FAST_MEDAL_BUY_POP_UP, last_step_check=True, padding=(padd_x, padd_y))
 
             return True
         
@@ -223,27 +260,23 @@ class DDTankAntQueen(DDTankBot):
             img_width, img_height = Image.open(self.EXPEDITION_YES_SELECTION).size
             padd_x = img_width*1/2
             padd_y = img_height*1/2
-            self.check_if_img_on_screen_and_click(self.EXPEDITION_YES_SELECTION, last_step_check=True, padding=(padd_x, padd_y))
+            self.check_if_img_on_screen(self.EXPEDITION_YES_SELECTION, last_step_check=True, padding=(padd_x, padd_y))
 
             img_width, img_height = Image.open(self.SPEND_MEDAL_TO_OPEN_EXPEDITION).size
             padd_x = img_width*0.23
             padd_y = img_height*0.85
-            self.check_if_img_on_screen_and_click(self.SPEND_MEDAL_TO_OPEN_EXPEDITION, last_step_check=True, padding=(padd_x, padd_y))
+            self.check_if_img_on_screen(self.SPEND_MEDAL_TO_OPEN_EXPEDITION, last_step_check=True, padding=(padd_x, padd_y))
             return True
         else:
             if select_yes_check:
                 img_width, img_height = Image.open(self.SPEND_MEDAL_TO_OPEN_EXPEDITION).size
                 padd_x = img_width*0.23
                 padd_y = img_height*0.85
-                self.check_if_img_on_screen_and_click(self.SPEND_MEDAL_TO_OPEN_EXPEDITION, last_step_check=True, padding=(padd_x, padd_y))
+                self.check_if_img_on_screen(self.SPEND_MEDAL_TO_OPEN_EXPEDITION, last_step_check=True, padding=(padd_x, padd_y))
                 return True
 
-
-
-
-
-## WILL STOP FOR TODAY -> NEXT UP IS ACTUALLY CHECKING IF THE CURRENT METHOS WILL BE CONSISTENT ENOUGH SO IT CAN RUN ON ANY SCREEN SIZE
-## THE IDEAL WORLD WOULD BE WHERE WE CAN CONTROL A VIRTUAL MOUSE INSTEAD OF OUR WINDOWS MOUSE, NOT SURE IT THIS WILL BE POSSIBLE.
+## FIXED SCREEN SIZE CHANGE BY RESIZING IMAGES ACCORDING TO THE NEW SCREEN SIZE (BY CALCULATING SCREEN RATIO)
+## THE IDEAL WORLD WOULD BE WHERE WE CAN CONTROL A VIRTUAL MOUSE INSTEAD OF OUR WINDOWS MOUSE, NOT SURE IT THIS WILL BE POSSIBLE. -> STILL LOOKING FOR IT
 
 def main():
     bot_test = DDTankBot()
