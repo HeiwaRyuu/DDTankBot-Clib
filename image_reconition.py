@@ -31,6 +31,7 @@ class DDTankBot:
 
     ## THESE MAKE THE CODE MORE READABLE
     def check_if_img_on_screen_and_click(self, image, confidence='standard', last_step_check=False, padding=(0,0), half_padding=False, max_attempts=1):
+        attempts = 0
         if confidence == 'standard':
             confidence = self.condifence
         if half_padding:
@@ -38,7 +39,6 @@ class DDTankBot:
             padd_x = img_width*(1/2)
             padd_y = img_height*(1/2)
             padding = (padd_x, padd_y)
-        attempts = 0
         while attempts < max_attempts:
             if last_step_check:
                 try:
@@ -51,13 +51,21 @@ class DDTankBot:
                         return True
                     else:
                         print(f"Not found {image} Image!")
-                        return False
+                        attempts += 1
                 except Exception as e:
                     print("EXCEPTION: ", e)
+                    attempts += 1
+            else:
+                return False
+
+        return False
 
     
-    def check_if_img_on_screen(self, image, last_step_check=False, max_attempts=1):
+    def check_if_img_on_screen(self, image, confidence='standard', last_step_check=False, max_attempts=1):
         attempts = 0
+        if confidence == 'standard':
+            confidence = self.condifence
+        
         while attempts < max_attempts:
             if last_step_check:
                 try:
@@ -67,9 +75,14 @@ class DDTankBot:
                         return True
                     else:
                         print(f"Not found {image} Image!")
-                        return False
+                        attempts += 1
                 except Exception as e:
                     print("EXCEPTION: ", e)
+                    attempts += 1
+            else:
+                return False
+
+        return False
 
 
     def open_bag(self):
@@ -140,17 +153,15 @@ class DDTankAntQueen(DDTankBot):
         self.FAST_MEDAL_BUY_POP_UP=FAST_MEDAL_BUY_POP_UP
         self.SPEND_MEDAL_TO_OPEN_EXPEDITION=SPEND_MEDAL_TO_OPEN_EXPEDITION
 
-    
 
-    ## MAIN LOOP
     def mainloop(self):
         self.sleep_delay(self.standard_sleep_delay)
         open_expedition_check = self.check_if_img_on_screen_and_click(self.OPEN_EXPEDITION, last_step_check=True, half_padding=True)
         self.sleep_delay(self.standard_sleep_delay)
         
         ## CHECK IF FREE BOSS BATTLES
-        two_free_boss_battle_check = self.check_if_img_on_screen(self.TWO_FREE_BOSS_BATTLE, last_step_check=open_expedition_check)
-        one_free_boss_battle_check = self.check_if_img_on_screen(self.ONE_FREE_BOSS_BATTLE, last_step_check=open_expedition_check)
+        two_free_boss_battle_check = self.check_if_img_on_screen(self.TWO_FREE_BOSS_BATTLE, confidence=self.standard_lower_confidence, last_step_check=open_expedition_check)
+        one_free_boss_battle_check = self.check_if_img_on_screen(self.ONE_FREE_BOSS_BATTLE, confidence=self.standard_lower_confidence, last_step_check=open_expedition_check)
 
         select_expedition_check = self.check_if_img_on_screen_and_click(self.EXPEDITION_SELECTION, last_step_check=open_expedition_check, half_padding=True)
         self.sleep_delay(self.standard_sleep_delay)
@@ -167,18 +178,19 @@ class DDTankAntQueen(DDTankBot):
         buy_medals_check = self.buy_medals(two_free_boss_battle_check, one_free_boss_battle_check, select_yes_check)
         self.sleep_delay(self.standard_sleep_delay)
 
-        self.finish_opening_expedition(buy_medals_check, select_yes_check)
+        is_expedition_opened = self.finish_opening_expedition(buy_medals_check, select_yes_check)
 
-        if buy_medals_check:
+        if is_expedition_opened:
             print("INSTANCE OPENED!")
         else:
             print("INSTANCE NOT OPENED!")
 
 
     def buy_medals(self, two_free_boss_battle_check, one_free_boss_battle_check, select_yes_check):
-        if two_free_boss_battle_check or one_free_boss_battle_check:
-            if select_yes_check:
-                return False
+        if ((two_free_boss_battle_check) or (one_free_boss_battle_check)) and (select_yes_check):
+            return False
+        elif ((not two_free_boss_battle_check) and (not one_free_boss_battle_check)) and (not select_yes_check):
+            return False
         else:
             img_width, img_height = Image.open(self.BUY_EXPEDITION_MEDALS_POP_UP).size
             padd_x = img_width*(1/5)
@@ -217,12 +229,14 @@ class DDTankAntQueen(DDTankBot):
             padd_x = img_width*0.23
             padd_y = img_height*0.85
             self.check_if_img_on_screen_and_click(self.SPEND_MEDAL_TO_OPEN_EXPEDITION, last_step_check=True, padding=(padd_x, padd_y))
+            return True
         else:
             if select_yes_check:
                 img_width, img_height = Image.open(self.SPEND_MEDAL_TO_OPEN_EXPEDITION).size
                 padd_x = img_width*0.23
                 padd_y = img_height*0.85
                 self.check_if_img_on_screen_and_click(self.SPEND_MEDAL_TO_OPEN_EXPEDITION, last_step_check=True, padding=(padd_x, padd_y))
+                return True
 
 
 
@@ -234,9 +248,9 @@ class DDTankAntQueen(DDTankBot):
 def main():
     bot_test = DDTankBot()
     # bot_test.open_bag()
-    bot_test.open_item(MANUAL_COMPLETO_IMAGE)
-    # antqueen_farm_bot = DDTankAntQueen()
-    # antqueen_farm_bot.mainloop()
+    # bot_test.open_item(MANUAL_COMPLETO_IMAGE)
+    antqueen_farm_bot = DDTankAntQueen()
+    antqueen_farm_bot.mainloop()
 
 
 if __name__ == '__main__':
