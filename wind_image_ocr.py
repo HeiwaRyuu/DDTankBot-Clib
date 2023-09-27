@@ -2,7 +2,11 @@ import pyautogui
 from PIL import Image
 import pytesseract
 import easyocr
+import numpy as np
 import cv2
+from src_imgs_path import *
+import os
+
 
 
 ## FIND WINDOW POSITION AND DIMENTIONS
@@ -14,19 +18,16 @@ def find_window_region():
 
     return (window_rect[0], window_rect[1], window_width, window_height)
 
-def screenshot_region(region):
+
+def screenshot_region(region, filename):
     img = pyautogui.screenshot(region=region)
-    img.save('wind_screenshot.png')
+    img.save(filename)
+    return filename
 
 
 def image_blackwhite(image):
     img_grey = cv2.imread(image, cv2.IMREAD_GRAYSCALE)
-    ## define a threshold, 128 is the middle of black and white in grey scale
-    thresh = 5
-    ## threshold the image
-    img_binary = cv2.threshold(img_grey, thresh, 255, cv2.THRESH_BINARY)[1]
-    #save image
-    cv2.imwrite(image,img_binary) 
+    cv2.imwrite(image,img_grey) 
 
 
 def image_upscale(image, scale_dimentions):
@@ -52,47 +53,55 @@ def image_upscale(image, scale_dimentions):
         image_obj.save(image)
 
 
-def fetch_wind_value(image):
-    wind_value=''
-    wind_digits='.0123456789'
-    current_wind_digits=[]
-    digit_counter=0
-    reader = easyocr.Reader(['en'], gpu=False)
-    result = reader.readtext(image, allowlist=wind_digits, decoder='greedy', rotation_info=[90, 180, 270], detail=0)
-    print(result)
-    # if len(result) > 0:
-    #     text_result = result[0][1]
-    #     if len(text_result) > 2:
-    #         print("RESULT: ", text_result)
-    #         # if text_result[0] == '8':
-    #         #     text_result.replace('8', '3', 1)
-    #         # elif text_result[0] == '3':
-    #         #     text_result.replace('3', '1', 1)
-    #         current_wind_digits.append(text_result[0])
-    #         current_wind_digits.append(text_result[2])
+def find_wind_digit(wind_screenshot):
+    img_rgb = cv2.imread(wind_screenshot)
+    wind_digit_images=[]
+    for file in os.listdir(DIGITS_PATH):
+        if file.startswith('ddtank_wind_digit'):
+            wind_digit_images.append(DIGITS_PATH+file)
 
-    wind_value = '.'.join(current_wind_digits)
+    for index, wind_digit_image in enumerate(wind_digit_images):
+        wind_digit=wind_digit_image
+        template = cv2.imread(wind_digit)
+        res = cv2.matchTemplate(img_rgb, template, cv2.TM_CCOEFF_NORMED)
+        threshold = 0.85
+        loc = np.where(res >= threshold)
+        if loc[0].size>0:
+            digit = wind_digit_image.split('_')[-1][0]
+            return digit
 
+
+def define_wind_digit_region(image_path, wind_digit_start_x_multiplier, wind_digit_start_y_multiplier, wind_digit_width_multiplier, wind_digit_height_multiplier):
+    window_x, window_y, window_width, window_height =find_window_region()
+    wind_start_x = round(window_width * wind_digit_start_x_multiplier, 0)
+    wind_start_y = round(window_height * wind_digit_start_y_multiplier, 0)
+    wind_width = round(wind_start_x* wind_digit_width_multiplier, 0)
+    wind_height = round(wind_start_y* wind_digit_height_multiplier, 0)
+
+    wind_region=(window_x+wind_start_x, window_y+wind_start_y, wind_width, wind_height)
+    wind_image = screenshot_region(wind_region, image_path)
+    image_blackwhite(wind_image)
+    image_upscale(wind_image, scale_dimentions=(wind_width*4, wind_height*4))
+    digit = find_wind_digit(wind_image)
+
+    return digit
+
+def find_wind_value():
+    wind_1_digit_start_x_multiplier = 0.475
+    wind_1_digit_start_y_multiplier = 0.09
+    wind_1_digit_width_multiplier = 0.045
+    wind_1_digit_height_multiplier = 0.365
+
+    wind_2_digit_start_x_multiplier = 0.51
+    wind_2_digit_start_y_multiplier = 0.09
+    wind_2_digit_width_multiplier = 0.04
+    wind_2_digit_height_multiplier = 0.365
+
+    digit_1 = define_wind_digit_region(WIND_SCREENSHOT_1_DIGIT, wind_1_digit_start_x_multiplier, wind_1_digit_start_y_multiplier, wind_1_digit_width_multiplier, wind_1_digit_height_multiplier)
+    digit_2 = define_wind_digit_region(WIND_SCREENSHOT_2_DIGIT, wind_2_digit_start_x_multiplier, wind_2_digit_start_y_multiplier, wind_2_digit_width_multiplier, wind_2_digit_height_multiplier)
+
+    wind_value = f'{digit_1}.{digit_2}'
     print(wind_value)
 
 
-wind_img = 'wind_screenshot.png'
-window_x, window_y, window_width, window_height =find_window_region()
-print('WINDOW REGION: ', window_x, window_y, window_width, window_height)
-wind_start_x = round(window_width * 0.478, 0)
-wind_start_y = round(window_height * 0.09, 0)
-print('WIND START REGION: ', wind_start_x, wind_start_y)
-wind_width = round(wind_start_x*0.1, 0)
-wind_height = round(wind_start_y*0.35, 0)
-print('WIND REGION: ', wind_width, wind_height)
-
-wind_region=(window_x+wind_start_x, window_y+wind_start_y, wind_width, wind_height)
-screenshot_region(wind_region)
-image_blackwhite(wind_img)
-image_upscale(wind_img, scale_dimentions=(wind_width*4, wind_height*4))
-fetch_wind_value(wind_img)
-
-# test_digits='ex_digits.png'
-# img_cv = cv2.imread(wind)
-# img_rgb = cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB)
-# print(pytesseract.image_to_string(img_rgb, config='--psm 10 --oem 3 -c tessedit_char_whitelist=.0123456789'))
+find_wind_value()

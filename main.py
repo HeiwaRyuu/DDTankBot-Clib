@@ -52,8 +52,6 @@ class DDTankBot:
         x_ratio = window_width/self.standard_window_dimensions[0]
         y_ratio = window_height/self.standard_window_dimensions[1]
 
-        # print("WINDOW SIZE : ", window_width, window_height)
-
         return (x_ratio, y_ratio)
     
 
@@ -67,9 +65,6 @@ class DDTankBot:
             image_height = int(round(image_height*y_ratio, 0))
             image_obj = Image.open(image).resize((image_width, image_height))
             new_path = RISEZED_TEMP_PATH+image.split('/')[-1]
-            # print("X_RATIO : ", x_ratio, "Y_RATIO : ", y_ratio)
-            # print('NEW IMAGE DIMENTIONS : ', image_width, image_height)
-            # print('SAVING RESIZED IMAGE TO : ', new_path)
             image_obj.save(new_path)
             
             image = new_path
@@ -164,6 +159,7 @@ class DDTankBot:
                 attempts += 1
                 if item_on_screen:
                     break
+
             if item_on_screen:
                 self.sleep_delay(self.standard_sleep_delay)
                 if_open_lote = self.open_lote()
@@ -172,6 +168,8 @@ class DDTankBot:
                     self.open_yes_button()
                 else:
                     self.open_single_item()
+            else:
+                break
 
 
     ## LETS DEVELOP A LOGIC FOR KILLING THE ANT QUEEN (INDEPENDENT OF WHERE YOU SPAWN, BUT FIRST, WE NEEK TO FIND A WAY TO RECOGNIZE THE SPAWN POINT, AND THEN THE ANT QUEEN POSITION)
@@ -241,15 +239,13 @@ class DDTankAntQueen(DDTankBot):
         elif ((not two_free_boss_battle_check) and (not one_free_boss_battle_check)) and (not select_yes_check):
             return False
         else:
-            img_width, img_height = Image.open(self.BUY_EXPEDITION_MEDALS_POP_UP).size
-            padd_x = img_width*(1/5)
-            padd_y = img_height*(3.5/4)
-            self.check_if_img_on_screen(self.BUY_EXPEDITION_MEDALS_POP_UP, last_step_check=True, padding=(padd_x, padd_y))
+            check_buy_expedition_medals_pop_up = self.check_if_img_on_screen(self.BUY_EXPEDITION_MEDALS_POP_UP, last_step_check=True)
+            if check_buy_expedition_medals_pop_up:
+                pyautogui.press('enter')
 
-            img_width, img_height = Image.open(self.NOT_ENOUGH_MEDALS_POP_UP).size
-            padd_x = img_width*(1/6)
-            padd_y = img_height*(3.5/4)
-            self.check_if_img_on_screen(self.NOT_ENOUGH_MEDALS_POP_UP, last_step_check=True, padding=(padd_x, padd_y))
+            check_not_enough_medals_pop_up = self.check_if_img_on_screen(self.NOT_ENOUGH_MEDALS_POP_UP, last_step_check=True)
+            if check_not_enough_medals_pop_up:
+                pyautogui.press('enter')
 
             img_width, img_height = Image.open(self.FAST_MEDAL_BUY_POP_UP).size
             padd_x = img_width*self.condifence
@@ -258,11 +254,7 @@ class DDTankAntQueen(DDTankBot):
             ## DOUBLE PRESS 9 FOR MAX NUMBER OF MEDALS
             pyautogui.press('9')
             pyautogui.press('9')
-            img_width, img_height = Image.open(self.FAST_MEDAL_BUY_POP_UP).size
-            padd_x = img_width*(1/2)
-            padd_y = img_height*0.85
-            self.check_if_img_on_screen(self.FAST_MEDAL_BUY_POP_UP, last_step_check=True, padding=(padd_x, padd_y))
-
+            pyautogui.press('enter')
             return True
         
     
@@ -274,10 +266,7 @@ class DDTankAntQueen(DDTankBot):
             padd_y = img_height*1/2
             self.check_if_img_on_screen(self.EXPEDITION_YES_SELECTION, last_step_check=True, padding=(padd_x, padd_y))
 
-            img_width, img_height = Image.open(self.SPEND_MEDAL_TO_OPEN_EXPEDITION).size
-            padd_x = img_width*0.23
-            padd_y = img_height*0.85
-            self.check_if_img_on_screen(self.SPEND_MEDAL_TO_OPEN_EXPEDITION, last_step_check=True, padding=(padd_x, padd_y))
+            pyautogui.press('enter')
             return True
         else:
             if select_yes_check:
@@ -295,10 +284,10 @@ class DDTankAntQueen(DDTankBot):
             padd_y = img_height*0.5
             self.check_if_img_on_screen(self.START_EXPEDITION_BUTTON, last_step_check=is_expedition_open, half_padding=True)
 
-            img_width, img_height = Image.open(self.CONFIRM_START_EXPEDITION_ALONE).size
-            padd_x = img_width*0.26
-            padd_y = img_height*0.85
-            self.check_if_img_on_screen(self.CONFIRM_START_EXPEDITION_ALONE, last_step_check=True, padding=(padd_x, padd_y))
+
+            stard_expedition_alone_check = self.check_if_img_on_screen(self.CONFIRM_START_EXPEDITION_ALONE, last_step_check=True, half_padding=True)
+            if stard_expedition_alone_check:
+                pyautogui.press('enter')
             return True
         else:
             return False
@@ -310,7 +299,7 @@ class DDTankAntQueen(DDTankBot):
 def main():
     bot_test = DDTankBot()
     # bot_test.open_bag()
-    # bot_test.open_item(MANUAL_COMPLETO_IMAGE)
+    # bot_test.open_item(HONRA_IMAGE)
     antqueen_farm_bot = DDTankAntQueen()
     antqueen_farm_bot.mainloop()
 
