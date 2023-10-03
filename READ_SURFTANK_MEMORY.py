@@ -30,7 +30,7 @@ def GetPtrAddr(pm, base, offsets):
     return addr + offsets[-1]
 
 
-ANGLE_PTR_OFFSET = 0xDD44F0
+ANGLE_PTR_OFFSET = 0xDD44F0 
 ANGLE_OFFSETS = [0x0, 0x508, 0x3A0, 0x4, 0xD4, 0x158, 0x320]
 
 PLAYER_TURN_PTR_OFFSET = 0xDD44F0
@@ -73,17 +73,16 @@ def main():
     current_round_shot_force_addr = GetPtrAddr(pm, gameModule + CURRENT_ROUND_SHOT_FORCE_PTR_OFFSET, [*CURRENT_ROUND_SHOT_FORCE_OFFSETS]) ## DOUBLE
 
     while True:
-        is_player_turn = pm.read_int(is_player_turn_addr)
-        if is_player_turn == 1:
+        if pm.read_int(is_player_turn_addr) == 1:
             weapon_angle = pm.read_double(weapon_angle_addr)
             is_player_shooting = pm.read_int(is_player_shooting_addr)
-            if is_player_turn == 1:
+            if pm.read_int(is_player_turn_addr) == 1:
                 (f"IS PLAYER SHOOTING: {'SHOOTING...' if is_player_shooting == 1 else 'NOT SHOOTING...'}")
 
             print(f"WEAPON ANGLE: {weapon_angle}")
-            print(f"IS PLAYER TURN: {f'PLAYER TURN: {is_player_turn}' if is_player_turn == 1 else f'NOT PLAYER TURN: {is_player_turn}'}")
+            print(f"IS PLAYER TURN: {f'PLAYER TURN: {pm.read_int(is_player_turn_addr)}' if pm.read_int(is_player_turn_addr) == 1 else f'NOT PLAYER TURN: {pm.read_int(is_player_turn_addr)}'}")
 
-            if is_player_turn:
+            if pm.read_int(is_player_turn_addr):
                 ## FOCUSING WINDOW
                 region = find_window_region(window_name="SurfTank")
                 pyautogui.moveTo(region[0]+region[2]/2, region[1]+region[3]/2)
@@ -94,9 +93,9 @@ def main():
                     current_round_shot_force = pm.read_double(current_round_shot_force_addr)
                     while pm.read_double(current_round_shot_force_addr) == 0:
                         # ## WRITE A RANDOM VALUE BETWEEN 0 AND 2000 IN THE current_round_shot_force_addr
-                        rand_power = np.random.randint(1000, 2000)
-                        pm.write_double(current_round_shot_force_addr, float(rand_power))
-                        pm.write_double(last_round_shot_force_addr, float((500/2000) * rand_power))
+                        rand_power = np.random.randint(500, 1500)
+                        pm.write_double(current_round_shot_force_addr, float(rand_power)) ## DOUBLE
+                        pm.write_double(last_round_shot_force_addr, float((500/2000) * rand_power)) ## DOUBLE
 
                         rand_angle = np.random.randint(15, 65)
                         pm.write_double(weapon_angle_addr, float(rand_angle))
@@ -104,6 +103,7 @@ def main():
                         time.sleep(1)
 
                     pydirectinput.press("space")
+                    pm.write_int(is_player_turn_addr, 0)
                 except Exception as e:
                     print(f"Excessão ao tentar atirar...: {e}")
 
