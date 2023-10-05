@@ -50,12 +50,6 @@ PLAYER_X_POS_OFFSETS = [0x16C, 0x270, 0x9C, 0x10C, 0x160, 0x2C, 0x3C]
 PLAYER_Y_POS_PTR_OFFSET = 0xDD46C4
 PLAYER_Y_POS_OFFSETS = [0x16C, 0x270, 0x9C, 0x10C, 0x160, 0x2C, 0x40]
 
-ENEMY_X_POS_PTR_OFFSET = 0xDD46C4
-ENEMY_X_POS_OFFSETS = [0x16C, 0x270, 0x9C, 0x10C, 0x160, 0x2BC, 0x3C]
-
-ENEMY_Y_POS_PTR_OFFSET = 0xDD46C4
-ENEMY_Y_POS_OFFSETS = [0x16C, 0x270, 0x9C, 0x10C, 0x160, 0x2BC, 0x40]
-
 PLAYER_LIFE_PTR_OFFSET = 0xDD46C4
 PLAYER_LIFE_OFFSETS = [0x4, 0x510, 0x120, 0x4, 0xD4, 0x158, 0x178]
 
@@ -68,6 +62,13 @@ PLAYER_POW_OFFSETS = [0x4, 0x510, 0x120, 0x4, 0xD4, 0x158, 0x1FC]
 PLAYER_MP_PTR_OFFSET = 0xDD46C4
 PLAYER_MP_OFFSETS = [0x16C, 0x2AC, 0x24C, 0x0, 0xB4, 0x25C, 0x28]
 
+
+####### ENEMY #######
+ENEMY_X_POS_PTR_OFFSET = 0xDD46C4 ## NOT CONSISTENT
+ENEMY_X_POS_OFFSETS = [0x16C, 0x270, 0x9C, 0x10C, 0x160, 0x2BC, 0x3C] ## NOT CONSISTENT
+
+ENEMY_Y_POS_PTR_OFFSET = 0xDD46C4  ## NOT CONSISTENT 
+ENEMY_Y_POS_OFFSETS = [0x16C, 0x270, 0x9C, 0x10C, 0x160, 0x2BC, 0x40] ## NOT CONSISTENT
 
 ####### WINDDIGIT #######
 WIND_FIRST_DIGIT_PTR_OFFSET = 0 ## NOT FOUND
@@ -154,8 +155,10 @@ def print_game_info():
         print("CURRENT ROUND SHOT FORCE: ", round(pm.read_double(current_round_shot_force_addr)*(100/2000), 0))
         print("PLAYER X POS: ", pm.read_int(player_x_pos_addr))
         print("PLAYER Y POS: ", pm.read_int(player_y_pos_addr))
+
         # print("ENEMY X POS: ", pm.read_int(enemy_x_pos_addr))
         # print("ENEMY Y POS: ", pm.read_int(enemy_y_pos_addr))
+
         print("PLAYER LIFE: ", pm.read_double(player_life_addr))
         print("PLAYER STAMINA: ", pm.read_double(player_stamina_addr))
         print("PLAYER POW: ", pm.read_int(player_pow_addr))
