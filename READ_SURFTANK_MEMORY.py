@@ -231,9 +231,13 @@ def main():
                 print(f"LAST ROUND SHOT FORCE: {last_round_shot_force}")
                 print(f"CURRENT ROUND SHOT FORCE: {current_round_shot_force}")
             print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+            time.sleep(1)
+            os.system("cls")
         else:
-            pass
-            # print("NOT PLAYER TURN...")
+            print("NOT PLAYER TURN...")
+            time.sleep(1)
+            os.system("cls")
+            
 
 
 
