@@ -48,6 +48,7 @@ PLAYER_MP_OFFSETS = [0x16C, 0x2AC, 0x24C, 0x0, 0xB4, 0x25C, 0x28]
 AOB_ENEMY_POS = rb'\x59\x40................................\x54\x68..\x00\x00\x00\x00\x06\x00\x00\x00....................\x00\x10\xFF\xFF..\x08\x80....\x00\x00\x80\x3F\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x3F..\x00\x00..\x00\x00.\x00\x00\x00.\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x59\x40\x00\x00\x00\x00\x00\x00\x59\x40\xFF\xFF\xFF\x07\xFF\xFF\xFF\x07\xFF\xFF\xFF\x07\xFF\xFF\xFF\x07'
 ENEMY_X_POS_OFFSET = 0x5E
 ENEMY_Y_POS_OFFSET = ENEMY_X_POS_OFFSET + 0x4
+ENEMY_TURN_OFFSET = ENEMY_X_POS_OFFSET + 0xC
 
 ####### WINDDIGIT #######
 WIND_FIRST_DIGIT_PTR_OFFSET = 0 ## NOT FOUND
@@ -116,37 +117,44 @@ def check_forbidden_pairs(value_x, value_y):
     return False
 
 
-def aob_to_data_enemy_pos(pid, aob, offset_x=0, offset_y=0, my_pos_x=0, my_pos_y=0):
+def aob_to_data_enemy_pos(pid, aob, offset_x=0, offset_y=0, offset_turn=0, my_pos_x=0, my_pos_y=0):
     pm = pymem.Pymem(pid)
     aob_address = pymem.pattern.pattern_scan_all(pm.process_handle, aob, return_multiple=True)
     for i, addr in enumerate(aob_address):
         addr_x = addr + offset_x
         addr_y = addr + offset_y
+        addr_turn = addr + offset_turn
         value_x = pm.read_int(addr_x)
         value_y = pm.read_int(addr_y)
+        value_turn = pm.read_int(addr_turn)
+
+        if not ((value_turn == 10) or (value_turn == 11)): ## FILTERING ENEMY TURN MUST BE 10 or 11
+            continue
 
         if not ((value_x >= 1) and (value_y >= 1)): ## FILTERING X AND Y CANNOT BE 0
             continue
+
+        if not ((value_x != my_pos_x) and (value_y != my_pos_y)): ## FILTERING X AND Y CANNOT BE EQUAL TO MY POSITION
+            continue
         
-        if not (value_y >= 5000 and value_y <= 50000): ## FILTERING Y CANNOT BE <= 1000 (this will rarely be the case)
+        if not (value_y >= 2000 and value_y <= 50000): ## FILTERING Y CANNOT BE <= 1000 (this will rarely be the case)
             continue
         
         if not (value_x >= 150 and value_x <= 80000): ## FILTERING X CANNOT BE <= 100 (this will rarely be the case)
             continue
         
-        if not ((value_x != my_pos_x) and (value_y != my_pos_y)): ## FILTERING X AND Y CANNOT BE EQUAL TO MY POSITION
-            continue
-        
-        if check_forbidden_pairs(value_x, value_y): ## FILTERING X AND Y CANNOT BE EQUAL TO FORBIDDEN PAIRS (CURSED AOB PATTERNS)
-            continue
+        # if check_forbidden_pairs(value_x, value_y): ## FILTERING X AND Y CANNOT BE EQUAL TO FORBIDDEN PAIRS (CURSED AOB PATTERNS)
+        #     continue
         
         print("\n")
         print("PID: " + str(pid))
         print("ADDR NUMBER: " + str(i))
         print("ADDR X: " + hex(addr_x))
         print("ADDR Y: " + hex(addr_y))
+        print("ADDR TURN: " + hex(addr_turn))
         print("VALUE X: " + str(value_x))
         print("VALUE Y: " + str(value_y))
+        print("VALUE TURN: " + str(value_turn))
         print("\n")
 
         return addr_x, addr_y
@@ -201,12 +209,12 @@ def print_game_info():
     player_x_pos_addr = GetPtrAddr(pm, gameModule + PLAYER_X_POS_PTR_OFFSET, [*PLAYER_X_POS_OFFSETS]) ## BYTE
     player_y_pos_addr = GetPtrAddr(pm, gameModule + PLAYER_Y_POS_PTR_OFFSET, [*PLAYER_Y_POS_OFFSETS]) ## BYTE
 
-    enemy_x_pos_addr, enemy_y_pos_addr = aob_to_data_enemy_pos(pid, AOB_ENEMY_POS, ENEMY_X_POS_OFFSET, ENEMY_Y_POS_OFFSET, pm.read_int(player_x_pos_addr), pm.read_int(player_y_pos_addr)) ## 4 BYTE (AOB TO DATA)
+    enemy_x_pos_addr, enemy_y_pos_addr = aob_to_data_enemy_pos(pid, AOB_ENEMY_POS, ENEMY_X_POS_OFFSET, ENEMY_Y_POS_OFFSET, ENEMY_TURN_OFFSET, pm.read_int(player_x_pos_addr), pm.read_int(player_y_pos_addr)) ## 4 BYTE (AOB TO DATA)
 
     player_life_addr = GetPtrAddr(pm, gameModule + PLAYER_LIFE_PTR_OFFSET, [*PLAYER_LIFE_OFFSETS]) ## DOUBLE
     player_stamina_addr = GetPtrAddr(pm, gameModule + PLAYER_STAMINA_PTR_OFFSET, [*PLAYER_STAMINA_OFFSETS]) ## DOUBLE
     player_pow_addr = GetPtrAddr(pm, gameModule + PLAYER_POW_PTR_OFFSET, [*PLAYER_POW_OFFSETS]) ## INT 4
-    player_mp_addr = GetPtrAddr(pm, gameModule + PLAYER_MP_PTR_OFFSET, [*PLAYER_MP_OFFSETS]) ## INT 4
+    # player_mp_addr = GetPtrAddr(pm, gameModule + PLAYER_MP_PTR_OFFSET, [*PLAYER_MP_OFFSETS]) ## INT 4
 
     # while True:
     print("PLAYER WEAPON ANGLE: ", pm.read_double(weapon_angle_addr))
@@ -220,7 +228,7 @@ def print_game_info():
     print("PLAYER LIFE: ", pm.read_double(player_life_addr))
     print("PLAYER STAMINA: ", pm.read_double(player_stamina_addr))
     print("PLAYER POW: ", pm.read_int(player_pow_addr))
-    print("PLAYER MP: ", pm.read_int(player_mp_addr))
+    # print("PLAYER MP: ", pm.read_int(player_mp_addr))
 
     if enemy_x_pos_addr != 0 and enemy_y_pos_addr != 0:
         teleport_to_enemy_location(pm, player_x_pos_addr, player_y_pos_addr, enemy_x_pos_addr, enemy_y_pos_addr)
@@ -245,12 +253,12 @@ def main():
     player_x_pos_addr = GetPtrAddr(pm, gameModule + PLAYER_X_POS_PTR_OFFSET, [*PLAYER_X_POS_OFFSETS]) ## BYTE
     player_y_pos_addr = GetPtrAddr(pm, gameModule + PLAYER_Y_POS_PTR_OFFSET, [*PLAYER_Y_POS_OFFSETS]) ## BYTE
 
-    enemy_x_pos_addr, enemy_y_pos_addr = aob_to_data_enemy_pos(pid, AOB_ENEMY_POS, ENEMY_X_POS_OFFSET, ENEMY_Y_POS_OFFSET, pm.read_int(player_x_pos_addr), pm.read_int(player_y_pos_addr)) ## 4 BYTE (AOB TO DATA)
+    enemy_x_pos_addr, enemy_y_pos_addr = aob_to_data_enemy_pos(pid, AOB_ENEMY_POS, ENEMY_X_POS_OFFSET, ENEMY_Y_POS_OFFSET, ENEMY_TURN_OFFSET, pm.read_int(player_x_pos_addr), pm.read_int(player_y_pos_addr)) ## 4 BYTE (AOB TO DATA)
 
     player_life_addr = GetPtrAddr(pm, gameModule + PLAYER_LIFE_PTR_OFFSET, [*PLAYER_LIFE_OFFSETS]) ## DOUBLE
     player_stamina_addr = GetPtrAddr(pm, gameModule + PLAYER_STAMINA_PTR_OFFSET, [*PLAYER_STAMINA_OFFSETS]) ## DOUBLE
     player_pow_addr = GetPtrAddr(pm, gameModule + PLAYER_POW_PTR_OFFSET, [*PLAYER_POW_OFFSETS]) ## INT 4
-    player_mp_addr = GetPtrAddr(pm, gameModule + PLAYER_MP_PTR_OFFSET, [*PLAYER_MP_OFFSETS]) ## INT 4
+    # player_mp_addr = GetPtrAddr(pm, gameModule + PLAYER_MP_PTR_OFFSET, [*PLAYER_MP_OFFSETS]) ## INT 4
 
 
     while True:
