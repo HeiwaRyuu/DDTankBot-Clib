@@ -42,33 +42,34 @@ PLAYER_MP_PTR_OFFSET = 0xDD46C4
 PLAYER_MP_OFFSETS = [0x16C, 0x2AC, 0x24C, 0x0, 0xB4, 0x25C, 0x28]
 
 
-####### ENEMY #######
-# AOB_ENEMY_POS = rb'\x59\x40................................\x54\x68..\x00\x00\x00\x00\x06\x00\x00\x00....................\x00\x10\xFF\xFF..\x08\x80....\x00\x00\x80\x3F\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x3F..\x00\x00..\x00\x00\x01\x00\x00\x00.\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x59\x40\x00\x00\x00\x00\x00\x00\x59\x40\xFF\xFF\xFF\x07\xFF\xFF\xFF\x07\xFF\xFF\xFF\x07\xFF\xFF\xFF\x07...........\x03'
-## NOT CONSISTENT, BUT WORKS FOR NOW
+####### ENEMY POSITION #######
+## WORKING AFTER SOME FILTERS
 AOB_ENEMY_POS = rb'\x59\x40................................\x54\x68..\x00\x00\x00\x00\x06\x00\x00\x00....................\x00\x10\xFF\xFF..\x08\x80....\x00\x00\x80\x3F\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x3F..\x00\x00..\x00\x00.\x00\x00\x00.\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x59\x40\x00\x00\x00\x00\x00\x00\x59\x40\xFF\xFF\xFF\x07\xFF\xFF\xFF\x07\xFF\xFF\xFF\x07\xFF\xFF\xFF\x07'
 ENEMY_X_POS_OFFSET = 0x5E
 ENEMY_Y_POS_OFFSET = ENEMY_X_POS_OFFSET + 0x4
 ENEMY_TURN_OFFSET = ENEMY_X_POS_OFFSET + 0xC
+ENEMY_TURN_POSSIBLE_VALUES_LST = [9, 10, 11]
 
-####### WINDDIGIT #######
-WIND_FIRST_DIGIT_PTR_OFFSET = 0 ## NOT FOUND
-WIND_FIRST_DIGIT_OFFSETS = [0x818] ## STILL NO POINTERS - WILL TRY AOB TO DATA
+####### WIND DIGITS #######
+WIND_FIRST_DIGIT_AOB = rb'\xFF\x03\x05\x0E\xFF\x06\x25\x64\xFF\x02\x12\x33\xFF\x00\x00\x00\xFF\x00\x00\x00\xFF\x84\xBC\xFF\xFF\x5A\x80\xA5\xFF\x09\x0C\x16\xFF\x46\x67\x95\xFF\x43\x5F\x8E\xFF\x54\x74\xA7\xFF\x1F\x2B\x45\xFF\x08\x09\x0D\xFF\x0C\x0E\x10\xFF\xAA\xBF\xD3\xFF\xCE\xE6\xFF\xFF\xD6\xEF\xFF\xFF\xC4\xDB\xE9\xFF\x8B\x9B\xA5\xFF\x8A\x98\xA4\xFF\x02\x01\x01\xFF\x0A\x0B\x0C\xFF\xB4\xD2\xE6\xFF\x00\x00\x00\xFF\x27\x44\x97\xFF...\xFF...\xFF...\xFF'
+WIND_FIRST_DIGIT_OFFSET = 0x139 # 0x180
+WIND_SECOND_DIGIT_OFFSET = WIND_FIRST_DIGIT_OFFSET + 0x80
+POSITIVE_CODE_DICT = {-9320:'0', -16777216:'1', -13201:'2', -13200:'3', -8011131:'4', -127:'5', -10041401:'6', -7960833:'7', -9258638:'8', -33925:'9'}
+NEGATIVE_CODE_DICT = {-13718:'0', -8733318:'1', -10615:'2', -11390:'3', -16777216:'4', -81:'5', -14270400:'6', -7763457:'7', -7551348:'8', -39322:'9'}
 
-WIND_SECOND_DIGIT_PTR_OFFSET = 0 ## NOT FOUND
-WIND_SECOND_DIGIT_OFFSETS = [0x818] ## STILL NO POINTERS - WILL TRY AOB TO DATA
 
+# WIND DIGIT  POSITIVE CODE	 NEGATIVE	## UNIQUE DIGITS, BUT NO WIND DIRECTION , SEE IF WE CAN FIND IT
+# 0     4294957976	4294953578
+# 1     4278190080	4286233978
+# 2     4294954095	4294956681
+# 3     4294954096	4294955906
+# 4     4286956165	4278190080
+# 5     4294967169	4294967215
+# 6     4284925895	4280696896
+# 7     4287006463	4287203839
+# 8     4285708658	4287415948
+# 9     4294933371	4294927974
 
-# WIND DIGIT  POSITIVE CODE	 NEGATIVE	
-#    0	       4282087544	4280696896	ok
-#    1	       4286595650	4278190080	problem
-#    2	       4285839988	4282873671	ok
-#    3	       4290746449	4290746449	problem
-#    4	       4294957199	4278190080	problem
-#    5	       4285553203	4291269686	ok
-#    6	       4281686837	4278190080	problem
-#    7	       4286611530	4290756462	ok
-#    8	       4284769479	4280492888	ok
-#    9	       4290728787	4287577405	ok
 
 def get_pids(process):
     pids = []
@@ -81,7 +82,7 @@ def get_pids(process):
 def initialize_process(process_name, module_name):
     try:
         pids = get_pids(process_name)
-        pm = pymem.Pymem(pids[0])
+        pm = pymem.Pymem(pids[1])
     except:
         print("ERROR: Process not found")
         exit()
@@ -128,7 +129,7 @@ def aob_to_data_enemy_pos(pid, aob, offset_x=0, offset_y=0, offset_turn=0, my_po
         value_y = pm.read_int(addr_y)
         value_turn = pm.read_int(addr_turn)
 
-        if not ((value_turn == 10) or (value_turn == 11)): ## FILTERING ENEMY TURN MUST BE 10 or 11
+        if not (value_turn in ENEMY_TURN_POSSIBLE_VALUES_LST): ## FILTERING ENEMY TURN MUST BE 10 or 11
             continue
 
         if not ((value_x >= 1) and (value_y >= 1)): ## FILTERING X AND Y CANNOT BE 0
@@ -136,30 +137,40 @@ def aob_to_data_enemy_pos(pid, aob, offset_x=0, offset_y=0, offset_turn=0, my_po
 
         if not ((value_x != my_pos_x) and (value_y != my_pos_y)): ## FILTERING X AND Y CANNOT BE EQUAL TO MY POSITION
             continue
-        
-        if not (value_y >= 2000 and value_y <= 50000): ## FILTERING Y CANNOT BE <= 1000 (this will rarely be the case)
-            continue
-        
-        if not (value_x >= 150 and value_x <= 80000): ## FILTERING X CANNOT BE <= 100 (this will rarely be the case)
-            continue
-        
-        # if check_forbidden_pairs(value_x, value_y): ## FILTERING X AND Y CANNOT BE EQUAL TO FORBIDDEN PAIRS (CURSED AOB PATTERNS)
-        #     continue
-        
-        print("\n")
-        print("PID: " + str(pid))
-        print("ADDR NUMBER: " + str(i))
-        print("ADDR X: " + hex(addr_x))
-        print("ADDR Y: " + hex(addr_y))
-        print("ADDR TURN: " + hex(addr_turn))
-        print("VALUE X: " + str(value_x))
-        print("VALUE Y: " + str(value_y))
-        print("VALUE TURN: " + str(value_turn))
-        print("\n")
 
         return addr_x, addr_y
     
     return 0, 0
+
+
+
+## NOT WORKING CONSISTENTLY, WILL HAVE TO FIND A WAY TO GET A GOOD AOB FOR THE WIND, BE IT THIS VALUE, OR BE IT A DIFFERENT VALUE FOR WIND AS WELL
+def aob_to_data_wind_digit(pid, aob, wind_first_digit_offset=0, wind_second_digit_offset=0):
+    pm = pymem.Pymem(pid)
+    addr = pymem.pattern.pattern_scan_all(pm.process_handle, aob, return_multiple=False)
+    flag_found = False
+    if addr:
+        addr_first_digit = addr + wind_first_digit_offset
+        addr_second_digit = addr + wind_second_digit_offset
+        print("ADDR FIRST DIGIT: ", hex(addr_first_digit))
+        print("ADDR SECOND DIGIT: ", hex(addr_second_digit))
+        value_first_digit = pm.read_int(addr_first_digit)
+        value_second_digit = pm.read_int(addr_second_digit)
+
+
+        if value_first_digit in POSITIVE_CODE_DICT.keys():
+            value_first_digit = POSITIVE_CODE_DICT.get(value_first_digit, "Not found")
+            value_second_digit = POSITIVE_CODE_DICT.get(value_second_digit, "Not found")
+            flag_found = True
+        elif value_first_digit in NEGATIVE_CODE_DICT.keys():
+            value_first_digit = NEGATIVE_CODE_DICT.get(value_first_digit, "Not found")
+            value_second_digit = NEGATIVE_CODE_DICT.get(value_second_digit, "Not found")
+            flag_found = True
+
+        if flag_found:
+            return value_first_digit, value_second_digit
+        
+    return False, False
 
 
 
@@ -174,13 +185,9 @@ def find_window_region(window_name="SurfTank"):
 
 
 def teleport_to_enemy_location(pm, player_x_pos_addr, player_y_pos_addr, enemy_x_pos_addr, enemy_y_pos_addr):
-    print("PLAYER X POS: ", pm.read_int(player_x_pos_addr))
-    print("PLAYER Y POS: ", pm.read_int(player_y_pos_addr))
     if enemy_x_pos_addr != 0 and enemy_y_pos_addr != 0:
         enemy_x_pos = pm.read_int(enemy_x_pos_addr)
         enemy_y_pos = pm.read_int(enemy_y_pos_addr)
-        print("ENEMY X POS: ", enemy_x_pos)
-        print("ENEMY Y POS: ", enemy_y_pos)
     
         time.sleep(1)
         pm.write_int(player_x_pos_addr, enemy_x_pos)
@@ -189,12 +196,6 @@ def teleport_to_enemy_location(pm, player_x_pos_addr, player_y_pos_addr, enemy_x
         time.sleep(0.5)
         keyboard.press_and_release("left")
         keyboard.press_and_release("right")
-    else:
-        print("ENEMY X POS: ", "NOT FOUND")
-        print("ENEMY Y POS: ", "NOT FOUND")
-
-    print("PLAYER X POS: ", pm.read_int(player_x_pos_addr))
-    print("PLAYER Y POS: ", pm.read_int(player_y_pos_addr))
     
 
 
@@ -210,6 +211,7 @@ def print_game_info():
     player_y_pos_addr = GetPtrAddr(pm, gameModule + PLAYER_Y_POS_PTR_OFFSET, [*PLAYER_Y_POS_OFFSETS]) ## BYTE
 
     enemy_x_pos_addr, enemy_y_pos_addr = aob_to_data_enemy_pos(pid, AOB_ENEMY_POS, ENEMY_X_POS_OFFSET, ENEMY_Y_POS_OFFSET, ENEMY_TURN_OFFSET, pm.read_int(player_x_pos_addr), pm.read_int(player_y_pos_addr)) ## 4 BYTE (AOB TO DATA)
+    wind_digit_first, wind_digit_second = aob_to_data_wind_digit(pid, WIND_FIRST_DIGIT_AOB, WIND_FIRST_DIGIT_OFFSET, WIND_SECOND_DIGIT_OFFSET) ## 4 BYTE (AOB TO DATA)
 
     player_life_addr = GetPtrAddr(pm, gameModule + PLAYER_LIFE_PTR_OFFSET, [*PLAYER_LIFE_OFFSETS]) ## DOUBLE
     player_stamina_addr = GetPtrAddr(pm, gameModule + PLAYER_STAMINA_PTR_OFFSET, [*PLAYER_STAMINA_OFFSETS]) ## DOUBLE
@@ -237,6 +239,11 @@ def print_game_info():
     else:
         print("ENEMY X POS: ", "NOT FOUND")
         print("ENEMY Y POS: ", "NOT FOUND")
+
+    if wind_digit_first != False and wind_digit_second != False:
+        print(f'WIND VALUE == {wind_digit_first}.{wind_digit_second}')
+    else:
+        print("WIND VALUE == NOT FOUND")
 
         # time.sleep(1)
         # os.system("cls")
