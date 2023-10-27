@@ -50,7 +50,7 @@ ENEMY_Y_POS_OFFSET = ENEMY_X_POS_OFFSET + 0x4
 ENEMY_TURN_OFFSET = ENEMY_X_POS_OFFSET + 0xC
 ENEMY_TURN_POSSIBLE_VALUES_LST = [9, 10, 11]
 
-####### WIND DIGITS #######
+####### WIND DIGITS ####### SEEMS TO HAVE NO PROBLEMS --> SEEMS TO WORK ON EXPEDITION, WILL TRY TO TEST IT ON REGULAR PVP AND DIFFERENT CLIENT
 WIND_BASE_AOB = rb'\x15\x4B\xAB\xFF\x04\x43\xBD\xFF\x02\x49\xD0\xFF\x0B\x2F\x82\xFF\x0D\x55\xDB\xFF\x01\x74\xF3\xFF\x42\x60\x1B\xFF\x01\x74\xF3\xFF\x01\x4E\xEA\xFF\x05\x32\xA2\xFF\x01\x65\xF2\xFF\x02\x7F\xF5\xFF'
 WIND_FIRST_DIGIT_OFFSET = 0x140 # 0x180
 WIND_SECOND_DIGIT_OFFSET = WIND_FIRST_DIGIT_OFFSET + 0x80
@@ -174,7 +174,6 @@ def aob_to_data_wind_digit(pid, aob, wind_first_digit_offset=0, wind_second_digi
     pm = pymem.Pymem(pid)
     addr = pymem.pattern.pattern_scan_all(pm.process_handle, aob, return_multiple=False)
     flag_found = False
-    wind_sign = 1
     if addr:
         addr_first_digit = addr + wind_first_digit_offset
         addr_second_digit = addr + wind_second_digit_offset
@@ -197,7 +196,7 @@ def aob_to_data_wind_digit(pid, aob, wind_first_digit_offset=0, wind_second_digi
         if flag_found:
             return value_first_digit, value_second_digit
     else:
-        print("ADDR FIRST DIGIT: ", "NOT FOUND")
+        print("WIND ADDR: ", "NOT FOUND")
         
     return False, False
 
