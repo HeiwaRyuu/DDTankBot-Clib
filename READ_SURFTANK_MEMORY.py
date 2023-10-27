@@ -51,24 +51,26 @@ ENEMY_TURN_OFFSET = ENEMY_X_POS_OFFSET + 0xC
 ENEMY_TURN_POSSIBLE_VALUES_LST = [9, 10, 11]
 
 ####### WIND DIGITS #######
-WIND_FIRST_DIGIT_AOB = rb'\xFF\x03\x05\x0E\xFF\x06\x25\x64\xFF\x02\x12\x33\xFF\x00\x00\x00\xFF\x00\x00\x00\xFF\x84\xBC\xFF\xFF\x5A\x80\xA5\xFF\x09\x0C\x16\xFF\x46\x67\x95\xFF\x43\x5F\x8E\xFF\x54\x74\xA7\xFF\x1F\x2B\x45\xFF\x08\x09\x0D\xFF\x0C\x0E\x10\xFF\xAA\xBF\xD3\xFF\xCE\xE6\xFF\xFF\xD6\xEF\xFF\xFF\xC4\xDB\xE9\xFF\x8B\x9B\xA5\xFF\x8A\x98\xA4\xFF\x02\x01\x01\xFF\x0A\x0B\x0C\xFF\xB4\xD2\xE6\xFF\x00\x00\x00\xFF\x27\x44\x97\xFF...\xFF...\xFF...\xFF'
-WIND_FIRST_DIGIT_OFFSET = 0x139 # 0x180
+WIND_BASE_AOB = rb'\x15\x4B\xAB\xFF\x04\x43\xBD\xFF\x02\x49\xD0\xFF\x0B\x2F\x82\xFF\x0D\x55\xDB\xFF\x01\x74\xF3\xFF\x42\x60\x1B\xFF\x01\x74\xF3\xFF\x01\x4E\xEA\xFF\x05\x32\xA2\xFF\x01\x65\xF2\xFF\x02\x7F\xF5\xFF'
+WIND_FIRST_DIGIT_OFFSET = 0x140 # 0x180
 WIND_SECOND_DIGIT_OFFSET = WIND_FIRST_DIGIT_OFFSET + 0x80
-POSITIVE_CODE_DICT = {-9320:'0', -16777216:'1', -13201:'2', -13200:'3', -8011131:'4', -127:'5', -10041401:'6', -7960833:'7', -9258638:'8', -33925:'9'}
-NEGATIVE_CODE_DICT = {-13718:'0', -8733318:'1', -10615:'2', -11390:'3', -16777216:'4', -81:'5', -14270400:'6', -7763457:'7', -7551348:'8', -39322:'9'}
+POSITIVE_CODE_DICT = {-12295612:'0', -15853544:'1', -8885938:'2', -11522257:'3', -15066568:'4', -7814008:'5', -14602207:'6', -12569827:'7', -15724537:'8', -14277040:'9'}
+NEGATIVE_CODE_DICT = {-9982873:'0', -13412264:'1', -12166:'2', -4231570:'3', -1:'4', -11566001:'5', -16248824:'6', -4744347:'7', -1579152:'8', -9210961:'9'}
 
 
-# WIND DIGIT  POSITIVE CODE	 NEGATIVE	## UNIQUE DIGITS, BUT NO WIND DIRECTION , SEE IF WE CAN FIND IT
-# 0     4294957976	4294953578
-# 1     4278190080	4286233978
-# 2     4294954095	4294956681
-# 3     4294954096	4294955906
-# 4     4286956165	4278190080
-# 5     4294967169	4294967215
-# 6     4284925895	4280696896
-# 7     4287006463	4287203839
-# 8     4285708658	4287415948
-# 9     4294933371	4294927974
+# pos			neg	
+# 0	4282671684		0	4284984423
+# 1	4279113752		1	4281555032
+# 2	4286081358		2	4294955130
+# 3	4283445039		3	4290735726
+# 4	4279900728		4	UNKNOWN
+# 5	4287153288		5	4283401295
+# 6	4280365089		6	4278718472
+# 7	4282397469		7	4290222949
+# 8	4279242759		8	4293388144
+# 9	4280690256		9	4285756335
+
+
 
 
 def get_pids(process):
@@ -82,7 +84,7 @@ def get_pids(process):
 def initialize_process(process_name, module_name):
     try:
         pids = get_pids(process_name)
-        pm = pymem.Pymem(pids[1])
+        pm = pymem.Pymem(pids[0])
     except:
         print("ERROR: Process not found")
         exit()
@@ -137,10 +139,33 @@ def aob_to_data_enemy_pos(pid, aob, offset_x=0, offset_y=0, offset_turn=0, my_po
 
         if not ((value_x != my_pos_x) and (value_y != my_pos_y)): ## FILTERING X AND Y CANNOT BE EQUAL TO MY POSITION
             continue
+        
+        if not (value_y >= 2000 and value_y <= 50000): ## FILTERING Y CANNOT BE <= 1000 (this will rarely be the case)
+            continue
+
+        if not (value_x >= 150 and value_x <= 80000): ## FILTERING X CANNOT BE <= 100 (this will rarely be the case)
+            continue
 
         return addr_x, addr_y
     
     return 0, 0
+
+
+## NOT WORKING CONSISTENTLY, WILL HAVE TO FIND A WAY TO GET A GOOD AOB FOR THE WIND, BE IT THIS VALUE, OR BE IT A DIFFERENT VALUE FOR WIND AS WELL
+def read_wind_addr(pid, aob, wind_first_digit_offset=0, wind_second_digit_offset=0):
+    print("READ WIND ADDR")
+    pm = pymem.Pymem(pid)
+    addr = pymem.pattern.pattern_scan_all(pm.process_handle, aob, return_multiple=False)
+    if addr:
+        addr_first_digit = addr + wind_first_digit_offset
+        addr_second_digit = addr + wind_second_digit_offset
+        print("ADDR FIRST DIGIT: ", hex(addr_first_digit))
+        print("ADDR SECOND DIGIT: ", hex(addr_second_digit))
+        value_first_digit = pm.read_int(addr_first_digit)
+        value_second_digit = pm.read_int(addr_second_digit)
+
+        print("VALUE FIRST DIGIT: ", value_first_digit)
+        print("VALUE SECOND DIGIT: ", value_second_digit)
 
 
 
@@ -149,6 +174,7 @@ def aob_to_data_wind_digit(pid, aob, wind_first_digit_offset=0, wind_second_digi
     pm = pymem.Pymem(pid)
     addr = pymem.pattern.pattern_scan_all(pm.process_handle, aob, return_multiple=False)
     flag_found = False
+    wind_sign = 1
     if addr:
         addr_first_digit = addr + wind_first_digit_offset
         addr_second_digit = addr + wind_second_digit_offset
@@ -164,11 +190,14 @@ def aob_to_data_wind_digit(pid, aob, wind_first_digit_offset=0, wind_second_digi
             flag_found = True
         elif value_first_digit in NEGATIVE_CODE_DICT.keys():
             value_first_digit = NEGATIVE_CODE_DICT.get(value_first_digit, "Not found")
-            value_second_digit = NEGATIVE_CODE_DICT.get(value_second_digit, "Not found")
+            value_second_digit = NEGATIVE_CODE_DICT.get(value_second_digit, "4")
+            value_first_digit = f'-{value_first_digit}'
             flag_found = True
 
         if flag_found:
             return value_first_digit, value_second_digit
+    else:
+        print("ADDR FIRST DIGIT: ", "NOT FOUND")
         
     return False, False
 
@@ -211,7 +240,7 @@ def print_game_info():
     player_y_pos_addr = GetPtrAddr(pm, gameModule + PLAYER_Y_POS_PTR_OFFSET, [*PLAYER_Y_POS_OFFSETS]) ## BYTE
 
     enemy_x_pos_addr, enemy_y_pos_addr = aob_to_data_enemy_pos(pid, AOB_ENEMY_POS, ENEMY_X_POS_OFFSET, ENEMY_Y_POS_OFFSET, ENEMY_TURN_OFFSET, pm.read_int(player_x_pos_addr), pm.read_int(player_y_pos_addr)) ## 4 BYTE (AOB TO DATA)
-    wind_digit_first, wind_digit_second = aob_to_data_wind_digit(pid, WIND_FIRST_DIGIT_AOB, WIND_FIRST_DIGIT_OFFSET, WIND_SECOND_DIGIT_OFFSET) ## 4 BYTE (AOB TO DATA)
+    wind_digit_first, wind_digit_second = aob_to_data_wind_digit(pid, WIND_BASE_AOB, WIND_FIRST_DIGIT_OFFSET, WIND_SECOND_DIGIT_OFFSET) ## 4 BYTE (AOB TO DATA)
 
     player_life_addr = GetPtrAddr(pm, gameModule + PLAYER_LIFE_PTR_OFFSET, [*PLAYER_LIFE_OFFSETS]) ## DOUBLE
     player_stamina_addr = GetPtrAddr(pm, gameModule + PLAYER_STAMINA_PTR_OFFSET, [*PLAYER_STAMINA_OFFSETS]) ## DOUBLE
@@ -324,3 +353,5 @@ def main():
 if __name__ == "__main__":
     # main()  
     print_game_info()
+    # pm, gameModule, pid = initialize_process(process_name="LoadingAir.exe", module_name="Adobe AIR.dll")
+    # read_wind_addr(pid, WIND_BASE_AOB, WIND_FIRST_DIGIT_OFFSET, WIND_SECOND_DIGIT_OFFSET)
