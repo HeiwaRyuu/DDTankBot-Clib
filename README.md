@@ -10,6 +10,6 @@ Already found pointers to player's:\
 5 - Last Round Shot Force\
 6 - Round (1 if player turn, otherwise 0)\
 
-Also found position AOB for any objetic in a map, currently using it to filter enemy X and Y position (80% consistent)\
+Also found position AOB for any objetic in a map, currently using it to filter enemy X and Y position (80% consistent)
 
-Currently having a hard time finding a way to fetch the current wind value consistently...\
+Currently having a hard time finding a way to fetch the current wind value consistently...
