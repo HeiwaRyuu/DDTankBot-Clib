@@ -2,8 +2,8 @@
 This is a bot for farming different types of content in the game DDTank
 I'm currently developing it's features, but basically it will be able to solo farm any expedition and also self farm PvP's (for missions and drops)
 
-Already found pointers to player's:\br
-1 - X and Y position\br
+Already found pointers to player's:<\br>
+1 - X and Y position<\br>
 2 - Player's Life
 3 - Stamina
 4 - Shot Force
